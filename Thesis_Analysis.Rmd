@@ -1,0 +1,793 @@
+---
+title: "ThesisAnalysis"
+author: "Kassia Orychock"
+date: '2019-01-31'
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    keep_md: yes
+---
+
+```{r, echo = FALSE, warning = FALSE}
+options(scipen = 2, digits = 4)
+library(knitr)
+opts_chunk$set(warning = FALSE)
+```
+
+This Rmd file will be used as the file for my Thesis Analysis on causal mediation.
+
+# Libraries
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(car)
+library(foreign)
+library(Hmisc)
+library(knitr)
+library(dplyr)
+library(survival)
+library(finalfit)
+library(tableone)
+library(lme4)
+library(e1071)
+library(mediation)
+library(broom)
+```
+
+# Reading of Raw Survey Data
+```{r}
+ibiccs_readin <- read.csv("/Volumes/hkr-storage/Research/dfuller/Walkabilly/data/IBICCS/Complete/Database_recoded_2012-2014_weights_Walkscore_RTA.csv")
+
+write.csv(ibiccs_readin, "/Users/dfuller/Desktop/ibiccs.csv")
+
+setwd("/Users/dfuller/Dropbox/Students/MUN/Kassia Orychock/Thesis")
+
+ibiccs_readin$TransitScore <- as.numeric(ibiccs_readin$TransitScore)
+ibiccs_readin$BikeScore <- as.numeric(ibiccs_readin$BikeScore)
+```
+
+# Recode BMI
+```{r}
+## BMI
+ibiccs_clean <- ibiccs_readin %>%
+	mutate(bmi_category = case_when(
+		bmi < 18.5 ~ "underweight",
+		bmi >=30 & bmi <999 ~ "obese",
+		bmi >=25 & bmi <30 ~ "overweight",
+		bmi >=18.5 & bmi <25 ~ "normal weight",
+		bmi == 9999 ~ "NA",
+		TRUE ~ "other"
+	))
+
+table(ibiccs_clean$bmi_category)
+summary(ibiccs_clean$bmi)
+```
+
+# Recode Language
+```{r}
+table(ibiccs_clean$lang)
+## Language
+ibiccs_clean <- ibiccs_clean %>%
+	mutate(language = case_when(
+		lang == "Anglais" ~ "English",
+		lang == "Espagnol" ~ "Fren/Span",
+		lang == "Français" ~ "Fren/Span"
+	))
+table(ibiccs_clean$lang, ibiccs_clean$language)
+```
+
+# Recode Gender
+```{r}
+table(ibiccs_clean$q54)
+#Gender
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(gender = case_when(
+    q54 == "Femme" ~ "Female",
+    q54 == "Homme" ~ "Male"
+  ))
+table(ibiccs_clean$q54, ibiccs_clean$gender)
+```
+
+# Recode Self-Rated Health
+```{r}
+table(ibiccs_clean$q2)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(health = case_when(
+    q2 == "Excellent" ~ "Excellent",
+    q2 == "Très bon" ~ "Very Good",
+    q2 == "Bon" ~ "Good",
+    q2 == "Moyen" ~ "Poor/Fair",
+    q2 == "Mauvais" ~ "Poor/Fair"
+  ))
+table(ibiccs_clean$q2, ibiccs_clean$health)
+```
+
+# Recode Transportation
+```{r}
+table(ibiccs_clean$q13)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(common_transportation = case_when(
+    q13 == "Marche" ~ "Walking",
+    q13 == "Véhicule motorisé (loué, emprunté, covoiturage)" ~ "Car",
+    q13 == "Voiture personnelle" ~ "Car",
+    q13 == "Scooter" ~ "Other",
+    q13 == "Taxi" ~ "Other",
+    q13 == "Autre (précisez:)" ~ "Bicycle/Other",
+    q13 == "Transport en commun" ~ "Public Transportation",
+    q13 == "Vélo en libre-service" ~ "Bicycle/Other",
+    q13 == "Vélo personnel" ~ "Bicycle/Other"
+  ))
+table(ibiccs_clean$q13, ibiccs_clean$common_transportation)
+```
+
+# Recode Physically Active (Y/N)
+```{r}
+table(ibiccs_clean$q14)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(physically_active = case_when(
+    q14 == "Oui" ~ "Yes",
+    q14 == "Non" ~ "No"
+  ))
+table(ibiccs_clean$q14, ibiccs_clean$physically_active)
+```
+
+# Recode Type of Physical Activity 
+```{r}
+summary(ibiccs_clean$Tot_Q16_N_times_per_month_phys_activity)
+
+ibiccs_clean <- ibiccs_clean %>% replace_na(list(Tot_Q16_N_times_per_month_phys_activity = 0, 
+                       Tot_Q17_N_min_took_part_phys_activity = 0,
+                       Tot_Q19_N_times_per_month_phys_activity_most_exercise = 0,
+                       Tot_Q20_N_min_took_part_phys_activity_most_exercise = 0))
+
+summary(ibiccs_clean$Tot_Q16_N_times_per_month_phys_activity)
+
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(
+    pa_minutes_week1 = (Tot_Q16_N_times_per_month_phys_activity*Tot_Q17_N_min_took_part_phys_activity)/4,
+    pa_minutes_week2 = (Tot_Q19_N_times_per_month_phys_activity_most_exercise*Tot_Q20_N_min_took_part_phys_activity_most_exercise)/4,
+    pa_minutes_week = pa_minutes_week1+pa_minutes_week2
+  )
+
+summary(ibiccs_clean$pa_minutes_week)
+
+pa_histo <- ggplot(ibiccs_clean, aes(pa_minutes_week)) + 
+              geom_histogram()
+plot(pa_histo)
+
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(pa_guidelines = case_when(
+    pa_minutes_week <= 149 ~ "no",
+    pa_minutes_week > 149 ~ "yes",
+  ))
+
+table(ibiccs_clean$pa_guidelines)
+```
+
+# Recode Days Per Week Spent Travelling via Car
+```{r}
+table(ibiccs_clean$q21)
+
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(day_per_week_motor_vehicle = case_when(
+    q21 == 0 ~ 0,
+    q21 == 1 ~ 1,
+    q21 == 2 ~ 2,
+    q21 == 3 ~ 3,
+    q21 == 4 ~ 4,
+    q21 == 5 ~ 5,
+    q21 == 6 ~ 6,
+    q21 == 7 ~ 7,
+    q21 == 98 ~ NA_real_,
+    q21 == 99 ~ NA_real_
+  ))
+table(ibiccs_clean$day_per_week_motor_vehicle)
+```
+
+# Recode Days Per Week Spent Travelling via Public Transport
+```{r}
+
+table(ibiccs_clean$q23)
+
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(day_per_week_public_transit = case_when(
+    q23 == 0 ~ 0,
+    q23 == 1 ~ 1,
+    q23 == 2 ~ 2,
+    q23 == 3 ~ 3,
+    q23 == 4 ~ 4,
+    q23 == 5 ~ 5,
+    q23 == 6 ~ 6,
+    q23 == 7 ~ 7,
+    q23 == 8 ~ NA_real_,
+    q23 == 9 ~ NA_real_
+  ))
+
+table(ibiccs_clean$q23, ibiccs_clean$day_per_week_public_transit)
+```
+
+# Recode Days Per Week Spent Travelling via Walking
+```{r}
+
+table(ibiccs_clean$q25)
+
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(day_per_week_walking = case_when(
+    q25 == 0 ~ 0,
+    q25 == 1 ~ 1,
+    q25 == 2 ~ 2,
+    q25 == 3 ~ 3,
+    q25 == 4 ~ 4,
+    q25 == 5 ~ 5,
+    q25 == 6 ~ 6,
+    q25 == 7 ~ 7,
+    q25 == 8 ~ NA_real_,
+    q25 == 9 ~ NA_real_
+  ))
+
+table(ibiccs_clean$q25, ibiccs_clean$day_per_week_walking)
+```
+
+# Recode Days Per Week Spent Travelling via Bike
+```{r}
+
+table(ibiccs_clean$q27)
+
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(day_per_week_bike = case_when(
+    q27 == 0 ~ 0,
+    q27 == 1 ~ 1,
+    q27 == 2 ~ 2,
+    q27 == 3 ~ 3,
+    q27 == 4 ~ 4,
+    q27 == 5 ~ 5,
+    q27 == 6 ~ 6,
+    q27 == 7 ~ 7,
+    q27 == 98 ~ NA_real_,
+    q27 == 99 ~ NA_real_
+  ))
+
+table(ibiccs_clean$q27, ibiccs_clean$day_per_week_bike)
+```
+
+# Recode Age
+```{r}
+summary(ibiccs_clean$q42)
+#CCHS/STATCAN or continuous
+```
+
+# Recode Marital Status
+```{r}
+table(ibiccs_clean$q44)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(marital_status = case_when(
+    q44 == "Célibatiare" ~ "Single",
+    q44 == "Divorcé(e)" ~ "Divorced/Separated/Widowed",
+    q44 == "En couple" ~ "Relationship/Married/Common-Law",
+    q44 == "Marié(e)/Conjoint de fait" ~ "Relationship/Married/Common-Law",
+    q44 == "Séparé(e)" ~ "Divorced/Separated/Widowed",
+    q44 == "Veuf(ve)" ~ "Divorced/Separated/Widowed"
+  ))
+table(ibiccs_clean$q44, ibiccs_clean$marital_status)
+```
+
+# Recode Number of Children in Home
+```{r}
+table(ibiccs_clean$q45)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(children_household = case_when(
+    q45 == 1 ~ "1",
+    q45 == 2 ~ "2",
+    q45 == 3 ~ "3",
+    q45 == 4 ~ "3",
+    q45 == 5 ~ "3",
+    q45 == 6 ~ "3",
+    q45 == 7 ~ "3",
+    q45 == 8 ~ "none",
+    q45 == 9 ~ "none"
+  ))
+table(ibiccs_clean$q45, ibiccs_clean$children_household)
+```
+
+# Recode Ethnicity
+```{r}
+table(ibiccs_clean$q47)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(ethnicity = case_when(
+    q47 == "Amérindien des États-Unis / Autochtone d'Amérique" ~ "Other",
+    q47 == "Arabe (Moyen-Orient, Afrique du Nord)" ~ "Other",
+    q47 == "Asiatique / insulaire du Pacifique" ~ "Asian",
+    q47 == "Autre" ~ "Other",
+    q47 == "Blanc(che) / Caucasien" ~ "Caucasian",
+    q47 == "Hispanique / Latino / Espagnol(e)" ~ "Hispanic",
+    q47 == "Indien / Pakistanais" ~ "Other",
+    q47 == "Jewish" ~ "Other",
+    q47 == "Mixed / Mixed race / Bi-racial" ~ "Other",
+    q47 == "Noir(e) / Africain(e) / Afro-Américain(e)" ~ "African American/Canadian"
+  ))
+table(ibiccs_clean$q47, ibiccs_clean$ethnicity)
+```
+
+# Recode Country Born
+```{r}
+table(ibiccs_clean$q48)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(country_born = case_when(
+    q48 == 1 ~ "Canada",
+    q48 == 2 ~ "United States",
+    q48 >= 3 ~ "Other", 
+    q48 <= 81 ~ "Other",
+    q48 == 96 ~ "Other"
+  ))
+table(ibiccs_clean$q48, ibiccs_clean$country_born)
+```
+
+# Recode Motor Vehicle Access
+```{r}
+table(ibiccs_clean$q50)
+
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(motor_vehicle_access = case_when(
+    q50 == "Non" ~ "No",
+    q50 == "Oui" ~ "Yes"
+  ))
+table(ibiccs_clean$q50, ibiccs_clean$motor_vehicle_access)
+```
+
+# Recode Education Level
+```{r}
+table(ibiccs_clean$q51)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(education = case_when(
+    q51 == "Aucun grade, certificat ou diplôme" ~ "High School/Lower",
+    q51 == "Baccalauréat" ~ "Baccalaureate",
+    q51 == "Cégep" ~ "Cégep",
+    q51 == "Certificat d'école de métier, certificat ou diplôme" ~ "Certificate/Diploma",
+    q51 == "Diplôme d'études secondaire ou l'équivalent" ~ "High School/Lower",
+    q51 == "Diplôme universitaire supérieur au baccalauréat" ~ "Graduate School",
+    q51 == "École primaire" ~ "High School/Lower"
+  ))
+table(ibiccs_clean$q51, ibiccs_clean$education)
+```
+
+# Recode Occupation Status
+```{r}
+table(ibiccs_clean$Q52_occupational_status_category)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(occupation_status = case_when(
+    Q52_occupational_status_category == "Disability" ~ "Unemployed",
+    Q52_occupational_status_category == "Full time or Self-employed" ~ "Employed",
+    Q52_occupational_status_category == "Homemaker or parental leave" ~ "Unemployed",
+    Q52_occupational_status_category == "Part time" ~ "Employed",
+    Q52_occupational_status_category == "Retired" ~ "Unemployed",
+    Q52_occupational_status_category == "Student" ~ "Student",
+    Q52_occupational_status_category == "Unemployed seeking work" ~ "Unemployed"
+  ))
+table(ibiccs_clean$Q52_occupational_status_category, ibiccs_clean$occupation_status)
+```
+
+# Recode Household Income
+```{r}
+table(ibiccs_clean$q53)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(household_income = case_when(
+    q53 == "Moins de 10000 $ par année" ~ "$0-$49999",
+    q53 == "Entre 10000 $ and 19999 $ par année" ~ "$0-$49999",
+    q53 == "Entre 20000 $ and 34999 $ par année" ~ "$0-$49999",
+    q53 == "Entre 35000 $ and 49999 $ par année" ~ "$0-$49999",
+    q53 == "Entre 50000 $ and 74999 $ par année" ~ "$50000-$99999",
+    q53 == "Entre 75000 $ and 99999 $ par année" ~ "$50000-$99999",
+    q53 == "Entre 100000 $ and 149999 $ par année" ~ "$100000-$149999",
+    q53 == "Entre 150000 $ and 199999 $ par année" ~ "$150000+",
+    q53 == "Plus de 200000 $ par année" ~ "$150000+",
+    q53 == "Refuse de répondre" ~ "Missing"
+  ))
+table(ibiccs_clean$q53, ibiccs_clean$household_income)
+```
+
+# Recode Household Income
+```{r}
+table(ibiccs_clean$q53)
+ibiccs_clean <- ibiccs_clean %>%
+  mutate(household_income_3 = case_when(
+    q53 == "Moins de 10000 $ par année" ~ "$0-$34999",
+    q53 == "Entre 10000 $ and 19999 $ par année" ~ "$0-$34999",
+    q53 == "Entre 20000 $ and 34999 $ par année" ~ "$0-$34999",
+    q53 == "Entre 35000 $ and 49999 $ par année" ~ "$34999-$74999",
+    q53 == "Entre 50000 $ and 74999 $ par année" ~ "$34999-$74999",
+    q53 == "Entre 75000 $ and 99999 $ par année" ~ "$34999-$74999",
+    q53 == "Entre 100000 $ and 149999 $ par année" ~ "$75000-Plus",
+    q53 == "Entre 150000 $ and 199999 $ par année" ~ "$75000-Plus",
+    q53 == "Plus de 200000 $ par année" ~ "$75000-Plus",
+    q53 == "Refuse de répondre" ~ "Missing"
+  ))
+table(ibiccs_clean$q53, ibiccs_clean$household_income_3)
+ibiccs_clean$household_income_3 <- as.factor(ibiccs_clean$household_income_3)
+```
+
+# Filtering Out Cities
+```{r}
+Boston <- filter(ibiccs_clean, ville == "Boston")
+Chicago <- filter(ibiccs_clean, ville == "Chicago")
+Detroit <- filter(ibiccs_clean, ville == "Détroit")
+NewYork <- filter(ibiccs_clean, ville == "New-York")
+Philadelphia <- filter(ibiccs_clean, ville == "Philadelphie")
+Montreal <- filter(ibiccs_clean, ville == "Montréal")
+Toronto <- filter(ibiccs_clean, ville == "Toronto")
+Vancouver <- filter(ibiccs_clean, ville == "Vancouver")
+```
+
+# Filtering Out Variables in Clean Data & Filtering Cities
+```{r}
+vars_clean <- c('language', 'ville', 'gender', 'health', 'common_transportation', 'pa_guidelines', 'day_per_week_motor_vehicle', 'day_per_week_public_transit', 'day_per_week_walking', 'day_per_week_bike', 'q42', 'marital_status', 'children_household', 'ethnicity', 'country_born', 'motor_vehicle_access', 'education', 'occupation_status', 'household_income', 'bmi', 'bmi_category', 'WalkScore', 'WalkScoreLabel', 'TransitScore', 'TransitScoreLabel', 'BikeScore', 'BikeScoreLabel', 'DiningandDrinkingScore', 'GroceryScore', 'household_income_3')
+
+ibiccs <- dplyr::select(ibiccs_clean, vars_clean)
+Boston <- dplyr::select(Boston, vars_clean)
+Chicago <- dplyr::select(Chicago, vars_clean)
+Detroit <- dplyr::select(Detroit, vars_clean)
+NewYork <- dplyr::select(NewYork, vars_clean)
+Philadelphia <- dplyr::select(Philadelphia, vars_clean)
+Montreal <- dplyr::select(Montreal, vars_clean)
+Toronto <- dplyr::select(Toronto, vars_clean)
+Vancouver <- dplyr::select(Vancouver, vars_clean)
+city <- rbind(Philadelphia, NewYork, Detroit, Chicago, Boston, Montreal, Toronto, Vancouver)
+```
+
+# Complete cases 
+```{r}
+ibiccs_cc <- ibiccs %>% 
+              drop_na("bmi", "GroceryScore", "WalkScore", "DiningandDrinkingScore", "ville", "gender", "q42", "children_household", "common_transportation", "ethnicity", "pa_guidelines", "household_income_3")
+```
+
+We remove missing data for all variables. We go from 23901 observations to 20366 observations. 
+
+# Table of Cities Combined
+```{r}
+vars <- c("bmi", "GroceryScore", "WalkScore", "DiningandDrinkingScore", "ville", "gender", "q42", "children_household", "common_transportation", "ethnicity", "pa_guidelines", "household_income_3", "ville")
+table1 <- CreateTableOne(vars = vars, data = ibiccs_cc)
+print(table1)
+```
+
+#Tables for Each City and Combined
+```{r}
+table1_city <- CreateTableOne(vars = vars, strata = "ville", data = ibiccs_cc)
+print(table1_city)
+```
+
+#Tables for Each City and Combined
+```{r}
+supplement_city <- ibiccs_cc %>%
+                    group_by(ville) %>%
+                      summarise(
+                        m_bmi = mean(bmi),
+                        sd_bmi = sd(bmi),
+                        m_walkscore = mean(WalkScore),
+                        sd_walkscore = sd(WalkScore),
+                        m_groceryscore = mean(GroceryScore),
+                        sd_groceryscore = sd(GroceryScore),
+                        m_ddrinkscore = mean(DiningandDrinkingScore),
+                        sd_ddrinkscore = sd(DiningandDrinkingScore)
+                      )
+supplement_city
+```
+
+# Histogram of BMI
+```{r}
+hist_bmi <- ggplot(ibiccs_cc, aes(bmi)) + 
+  geom_histogram()
+plot(hist_bmi)
+
+hist_bmi_city <- ggplot(ibiccs_cc, aes(bmi)) + 
+  geom_density(aes(group = ville, colour = ville)) +
+  theme_minimal()
+plot(hist_bmi_city)
+
+ggsave("hist_bmi_city.pdf", plot = hist_bmi_city, dpi = 150, height = 4, width = 6)
+```
+
+# Histogram of WalkScore
+```{r}
+hist_walkscore <- ggplot(ibiccs_cc, aes(WalkScore)) + 
+  geom_histogram()
+plot(hist_walkscore)
+
+hist_walkscore_city <- ggplot(ibiccs_cc, aes(WalkScore)) + 
+  geom_density(aes(group = ville, colour = ville)) +
+  theme_minimal()
+plot(hist_walkscore_city)
+
+ggsave("hist_walkscore_city.pdf", plot = hist_walkscore_city, dpi = 150, height = 4, width = 6)
+```
+
+# Histogram of TransitScore
+```{r}
+hist_trasnsitscore <- ggplot(ibiccs_cc, aes(TransitScore)) + 
+  geom_histogram()
+plot(hist_trasnsitscore)
+
+hist_trasnsitscore_city <- ggplot(ibiccs_cc, aes(TransitScore)) + 
+  geom_density(aes(group = ville, colour = ville)) +
+  theme_minimal()
+plot(hist_trasnsitscore_city)
+```
+
+# Histogram of GroceryScore
+```{r}
+hist_groceryscore <- ggplot(ibiccs_cc, aes(GroceryScore)) + 
+  geom_histogram()
+plot(hist_groceryscore)
+
+hist_groceryscore_city <- ggplot(ibiccs_cc, aes(GroceryScore)) + 
+  geom_density(aes(group = ville, colour = ville)) +
+  theme_minimal()
+plot(hist_groceryscore_city)
+
+ggsave("hist_groceryscore_city.pdf", plot = hist_groceryscore_city, dpi = 150, height = 4, width = 6)
+```
+
+# Histogram of DiningAndDrinkingScore
+```{r}
+hist_diningdrinkingscore <- ggplot(ibiccs_cc, aes(DiningandDrinkingScore)) + 
+  geom_histogram()
+plot(hist_diningdrinkingscore)
+
+hist_diningdrinkingscore_city <- ggplot(ibiccs_cc, aes(DiningandDrinkingScore)) + 
+  geom_density(aes(group = ville, colour = ville)) +
+  theme_minimal()
+plot(hist_diningdrinkingscore_city)
+
+ggsave("hist_diningdrinkingscore_city.pdf", plot = hist_diningdrinkingscore_city, dpi = 150, height = 4, width = 6)
+```
+
+# Linear Regression
+```{r}
+explanatory <- c('language', 'ville', 'gender', 'health', 'pa_guidelines', 'q42', 'marital_status', 'country_born', 'motor_vehicle_access', 'occupation_status', 'bmi_category', 'WalkScore', 'DiningandDrinkingScore', 'GroceryScore', 'day_per_week_motor_vehicle', 'day_per_week_public_transit', 'day_per_week_walking', 'day_per_week_bike', 'children_household', 'household_income_3')
+dependent <- "bmi"
+final_fit_Table <- ibiccs %>%
+  finalfit.lm(dependent, explanatory, na.rm = TRUE)
+
+write_csv(final_fit_Table, "final_fit_Table.csv")
+
+# Regressions for variables that won't run in explanatory
+educ_reg <- lm(bmi ~ factor(education), data = ibiccs_cc)
+educ_reg_tidy <- tidy(educ_reg, conf.int = TRUE)
+educ_reg_tidy
+
+write_csv(educ_reg_tidy, "educ_reg_tidy.csv")
+
+tran_reg <- lm(bmi ~ factor(common_transportation), data = ibiccs_cc)
+tran_reg_tidy <- tidy(tran_reg, conf.int = TRUE)
+tran_reg_tidy
+
+write_csv(tran_reg_tidy, "tran_reg_tidy.csv")
+
+income_reg <- lm(bmi ~ factor(household_income_3), data = ibiccs_cc)
+income_reg_tidy <- tidy(income_reg, conf.int = TRUE)
+income_reg_tidy
+
+write_csv(income_reg_tidy, "income_reg_tidy.csv")
+
+ethn_reg <- lm(bmi ~ factor(ethnicity), data = ibiccs_cc)
+ethn_reg_tidy <- tidy(ethn_reg, conf.int = TRUE)
+ethn_reg_tidy
+
+write_csv(ethn_reg_tidy, "ethn_reg_tidy.csv")
+
+pa_lvl_reg <- lm(bmi ~ factor(pa_guidelines), data = ibiccs_cc)
+pa_lvl_reg_tidy <- tidy(pa_lvl_reg, conf.int = TRUE)
+pa_lvl_reg_tidy
+
+write_csv(pa_lvl_reg_tidy, "pa_lvl_reg_tidy.csv")
+```
+
+# Linear Regression
+```{r}
+lm1 <- lm(bmi ~ WalkScore + DiningandDrinkingScore + GroceryScore + factor(ville), data = ibiccs_cc)
+summary(lm1)
+confint(lm1)
+
+lm2 <- lm(bmi ~ WalkScore + DiningandDrinkingScore + GroceryScore + factor(ville) + education + occupation_status + household_income_3, data = ibiccs_cc)
+summary(lm2)
+confint(lm2)
+
+lm3 <- lm(bmi ~ WalkScore + DiningandDrinkingScore + GroceryScore + factor(ville) + education + occupation_status + household_income_3 + language + gender + marital_status + ethnicity, data = ibiccs_cc)
+summary(lm3)
+confint(lm3)
+```
+
+# Scatter Plots for BMI & WalkScore
+```{r}
+bmi_walkscore <- ggplot(ibiccs_cc, aes(x = bmi, y = WalkScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() 
+
+plot(bmi_walkscore)
+
+ggsave("bmi_walkscore.pdf", plot = bmi_walkscore, dpi = 150, height = 4, width = 6)
+
+bmi_walkscore_city <- ggplot(ibiccs_cc, aes(x = bmi, y = WalkScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() +
+  facet_wrap(~ ville)
+
+plot(bmi_walkscore_city)
+
+ggsave("bmi_walkscore_city.pdf", plot = bmi_walkscore_city, dpi = 150, height = 4, width = 6)
+```
+
+# Scatter Plots for BMI & GroceryScore
+```{r}
+bmi_groceryscore <- ggplot(ibiccs_cc, aes(x = bmi, y = GroceryScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() 
+
+plot(bmi_groceryscore)
+
+ggsave("bmi_groceryscore.pdf", plot = bmi_groceryscore, dpi = 150, height = 4, width = 6)
+
+bmi_groceryscore_city <- ggplot(ibiccs_cc, aes(x = bmi, y = GroceryScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() +
+  facet_wrap(~ ville)
+
+plot(bmi_groceryscore_city)
+
+ggsave("bmi_groceryscore_city.pdf", plot = bmi_groceryscore_city, dpi = 150, height = 4, width = 6)
+```
+
+# Scatter Plots for BMI & DiningandDrinkingScore
+```{r}
+bmi_diningscore <- ggplot(ibiccs_cc, aes(x = bmi, y = DiningandDrinkingScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() 
+
+plot(bmi_diningscore)
+
+ggsave("bmi_diningscore.pdf", plot = bmi_diningscore, dpi = 150, height = 4, width = 6)
+
+bmi_diningscore_city <- ggplot(ibiccs_cc, aes(x = bmi, y = DiningandDrinkingScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() +
+  facet_wrap(~ ville)
+
+plot(bmi_diningscore_city)
+
+ggsave("bmi_diningscore_city.pdf", plot = bmi_diningscore_city, dpi = 150, height = 4, width = 6)
+```
+
+# Causal Mediation 
+
+These models include individual level covariates + a city level fixed effect. We run the simplified model (no covariates) followed by the model with all covariates. 
+
+# Grocery score
+
+## Step 1: GroceryScore
+```{r}
+gs_med <- glm(GroceryScore ~ WalkScore, family = gaussian(link = "identity"), data = ibiccs_cc) 
+#summary(gs_med)
+
+gs_out <- glm(bmi ~ WalkScore + GroceryScore, family = gaussian(link = "identity"), data = ibiccs_cc)
+#summary(gs_out)
+
+gs_mediation <- mediate(gs_med, gs_out, treat = "WalkScore", mediator = "GroceryScore", sims = 1000) 
+summary(gs_mediation)
+```
+
+## Step 2: Add all covariates 
+```{r}
+gs_med_c <- glm(GroceryScore ~ WalkScore + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines + household_income_3, family = gaussian(link = "identity"), data = ibiccs_cc) 
+#summary(gs_med_c)
+
+gs_out_c <- glm(bmi ~ WalkScore + GroceryScore + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines + household_income_3, family = gaussian(link = "identity"), data = ibiccs_cc)
+#summary(gs_out_c)
+
+gs_mediation_c <- mediate(gs_med_c, gs_out_c, treat = "WalkScore", mediator = "GroceryScore", sims = 1000) 
+summary(gs_mediation_c)
+plot(gs_mediation_c)
+```
+
+## Step 3: Income Effect Medication
+```{r}
+gs_med_inc <- glm(GroceryScore ~ WalkScore + WalkScore*household_income_3 + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines, family = gaussian(link = "identity"), data = ibiccs_cc) 
+#summary(gs_med_inc)
+
+gs_out_inc <- glm(bmi ~ WalkScore + GroceryScore + WalkScore*household_income_3 + GroceryScore*household_income_3 + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines, family = gaussian(link = "identity"), data = ibiccs_cc)
+#summary(gs_out_inc)
+
+gs_mediation_inc <- mediate(gs_med_inc, gs_out_inc, treat = "WalkScore", mediator = "GroceryScore", sims = 1000) 
+summary(gs_mediation_inc)
+
+gs_mediation_linc <- mediate(gs_med_inc, gs_out_inc, treat = "WalkScore", mediator = "GroceryScore", covariates = list(household_income_3 = "$0-$34999"), sims = 1000)
+summary(gs_mediation_linc)
+
+gs_mediation_minc <- mediate(gs_med_inc, gs_out_inc, treat = "WalkScore", mediator = "GroceryScore", covariates = list(household_income_3 = "$34999-$74999"), sims = 1000)
+summary(gs_mediation_minc)
+
+gs_mediation_hinc <- mediate(gs_med_inc, gs_out_inc, treat = "WalkScore", mediator = "GroceryScore", covariates = list(household_income_3 = "$75000-Plus"), sims = 1000)
+summary(gs_mediation_hinc)
+
+### Low income versus high income
+linc_v_hinc <- test.modmed(gs_mediation_inc, covariates.1 = list(household_income_3 = "$0-$34999"),
+                      covariates.2 = list(household_income_3 = "$75000-Plus"), sims = 1000)
+linc_v_hinc
+
+### Low income versus middle income
+linc_v_minc <- test.modmed(gs_mediation_inc, covariates.1 = list(household_income_3 = "$0-$34999"),
+                      covariates.2 = list(household_income_3 = "$34999-$74999"), sims = 1000)
+linc_v_minc
+
+### Middle income versus high income
+minc_v_hinc <- test.modmed(gs_mediation_inc, covariates.1 = list(household_income_3 = "$34999-$74999"),
+                      covariates.2 = list(household_income_3 = "$75000-Plus"), sims = 1000)
+minc_v_hinc
+```
+
+# Dining and Drinking score
+
+## Step 1: DiningandDrinkingScore
+```{r}
+dds_med <- glm(DiningandDrinkingScore ~ WalkScore, family = gaussian(link = "identity"), data = ibiccs_cc) 
+#summary(dds_med)
+
+dds_out <- glm(bmi ~ WalkScore + DiningandDrinkingScore, family = gaussian(link = "identity"), data = ibiccs_cc)
+#summary(dds_out)
+
+dds_mediation <- mediate(dds_med, dds_out, treat = "WalkScore", mediator = "DiningandDrinkingScore", sims = 1000) 
+summary(dds_mediation)
+```
+
+## Step 2: Add all covariates 
+```{r}
+dds_med_c <- glm(DiningandDrinkingScore ~ WalkScore + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines + household_income_3, family = gaussian(link = "identity"), data = ibiccs_cc) 
+#summary(dds_med_c)
+
+dds_out_c <- glm(bmi ~ WalkScore + DiningandDrinkingScore + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines + household_income_3, family = gaussian(link = "identity"), data = ibiccs_cc)
+#summary(dds_out_c)
+
+dds_mediation_c <- mediate(dds_med_c, dds_out_c, treat = "WalkScore", mediator = "DiningandDrinkingScore", sims = 1000) 
+summary(dds_mediation_c)
+plot(dds_mediation_c)
+```
+
+## Step 3: Income Effect Medication
+```{r}
+dds_med_inc <- glm(DiningandDrinkingScore ~ WalkScore + WalkScore*household_income_3 + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines, family = gaussian(link = "identity"), data = ibiccs_cc) 
+#summary(dds_med_inc)
+
+dds_out_inc <- glm(bmi ~ WalkScore + DiningandDrinkingScore + WalkScore*household_income_3 + DiningandDrinkingScore*household_income_3 + ville + gender + q42 + children_household + common_transportation + ethnicity + pa_guidelines, family = gaussian(link = "identity"), data = ibiccs_cc)
+#summary(dds_out_inc)
+
+dds_mediation_inc <- mediate(dds_med_inc, dds_out_inc, treat = "WalkScore", mediator = "DiningandDrinkingScore", sims = 1000) 
+summary(dds_mediation_inc)
+
+dds_mediation_linc <- mediate(dds_med_inc, dds_out_inc, treat = "WalkScore", mediator = "DiningandDrinkingScore", covariates = list(household_income_3 = "$0-$34999"), sims = 1000)
+summary(gs_mediation_linc)
+
+dds_mediation_minc <- mediate(dds_med_inc, dds_out_inc, treat = "WalkScore", mediator = "DiningandDrinkingScore", covariates = list(household_income_3 = "$34999-$74999"), sims = 1000)
+summary(gs_mediation_minc)
+
+dds_mediation_hinc <- mediate(dds_med_inc, dds_out_inc, treat = "WalkScore", mediator = "DiningandDrinkingScore", covariates = list(household_income_3 = "$75000-Plus"), sims = 1000)
+summary(gs_mediation_hinc)
+
+
+### Low income versus high income
+linc_v_hinc <- test.modmed(dds_mediation_inc, covariates.1 = list(household_income_3 = "$0-$34999"),
+                      covariates.2 = list(household_income_3 = "$75000-Plus"), sims = 1000)
+linc_v_hinc
+
+### Low income versus middle income
+linc_v_minc <- test.modmed(dds_mediation_inc, covariates.1 = list(household_income_3 = "$0-$34999"),
+                      covariates.2 = list(household_income_3 = "$34999-$74999"), sims = 1000)
+linc_v_minc
+
+### Middle income versus high income
+minc_v_hinc <- test.modmed(dds_mediation_inc, covariates.1 = list(household_income_3 = "$34999-$74999"),
+                      covariates.2 = list(household_income_3 = "$75000-Plus"), sims = 1000)
+minc_v_hinc
+```
