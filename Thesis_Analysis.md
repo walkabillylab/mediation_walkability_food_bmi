@@ -6,6 +6,7 @@ output:
   html_document:
     keep_md: yes
   pdf_document: default
+  word_document: default
 ---
 
 
@@ -27,12 +28,18 @@ library(tableone)
 library(lme4)
 library(e1071)
 library(mediation)
+library(broom)
 ```
 
 # Reading of Raw Survey Data
 
 ```r
 ibiccs_readin <- read.csv("/Volumes/hkr-storage/Research/dfuller/Walkabilly/data/IBICCS/Complete/Database_recoded_2012-2014_weights_Walkscore_RTA.csv")
+
+write.csv(ibiccs_readin, "/Users/dfuller/Desktop/ibiccs.csv")
+
+setwd("/Users/dfuller/Dropbox/Students/MUN/Kassia Orychock/Thesis")
+
 ibiccs_readin$TransitScore <- as.numeric(ibiccs_readin$TransitScore)
 ibiccs_readin$BikeScore <- as.numeric(ibiccs_readin$BikeScore)
 ```
@@ -1144,6 +1151,16 @@ Vancouver <- filter(ibiccs_clean, ville == "Vancouver")
 vars_clean <- c('language', 'ville', 'gender', 'health', 'common_transportation', 'pa_guidelines', 'day_per_week_motor_vehicle', 'day_per_week_public_transit', 'day_per_week_walking', 'day_per_week_bike', 'q42', 'marital_status', 'children_household', 'ethnicity', 'country_born', 'motor_vehicle_access', 'education', 'occupation_status', 'household_income', 'bmi', 'bmi_category', 'WalkScore', 'WalkScoreLabel', 'TransitScore', 'TransitScoreLabel', 'BikeScore', 'BikeScoreLabel', 'DiningandDrinkingScore', 'GroceryScore', 'household_income_3')
 
 ibiccs <- dplyr::select(ibiccs_clean, vars_clean)
+```
+
+```
+## Note: Using an external vector in selections is ambiguous.
+## ℹ Use `all_of(vars_clean)` instead of `vars_clean` to silence this message.
+## ℹ See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+## This message is displayed once per session.
+```
+
+```r
 Boston <- dplyr::select(Boston, vars_clean)
 Chicago <- dplyr::select(Chicago, vars_clean)
 Detroit <- dplyr::select(Detroit, vars_clean)
@@ -1167,7 +1184,7 @@ We remove missing data for all variables. We go from 23901 observations to 20366
 # Table of Cities Combined
 
 ```r
-vars <- c("bmi", "GroceryScore", "WalkScore", "DiningandDrinkingScore", "ville", "gender", "q42", "children_household", "common_transportation", "ethnicity", "pa_guidelines", "household_income_3")
+vars <- c("bmi", "GroceryScore", "WalkScore", "DiningandDrinkingScore", "ville", "gender", "q42", "children_household", "common_transportation", "ethnicity", "pa_guidelines", "household_income_3", "ville")
 table1 <- CreateTableOne(vars = vars, data = ibiccs_cc)
 print(table1)
 ```
@@ -1213,7 +1230,16 @@ print(table1)
 ##      $0-$34999                        3667 (17.9) 
 ##      $34999-$74999                    9299 (45.5) 
 ##      $75000-Plus                      5402 (26.4) 
-##      Missing                          2091 (10.2)
+##      Missing                          2091 (10.2) 
+##   ville (%)                                       
+##      Boston                           1722 ( 8.4) 
+##      Chicago                          3539 (17.3) 
+##      Détroit                          2569 (12.6) 
+##      Montréal                         2280 (11.1) 
+##      New-York                         3259 (15.9) 
+##      Philadelphie                     1278 ( 6.2) 
+##      Toronto                          3640 (17.8) 
+##      Vancouver                        2172 (10.6)
 ```
 
 #Tables for Each City and Combined
@@ -1265,6 +1291,15 @@ print(table1_city)
 ##      $34999-$74999                     750 ( 43.6)   1667 ( 47.1) 
 ##      $75000-Plus                       486 ( 28.2)    976 ( 27.6) 
 ##      Missing                           160 (  9.3)    267 (  7.5) 
+##   ville (%)                                                       
+##      Boston                           1722 (100.0)      0 (  0.0) 
+##      Chicago                             0 (  0.0)   3539 (100.0) 
+##      Détroit                             0 (  0.0)      0 (  0.0) 
+##      Montréal                            0 (  0.0)      0 (  0.0) 
+##      New-York                            0 (  0.0)      0 (  0.0) 
+##      Philadelphie                        0 (  0.0)      0 (  0.0) 
+##      Toronto                             0 (  0.0)      0 (  0.0) 
+##      Vancouver                           0 (  0.0)      0 (  0.0) 
 ##                                     Stratified by ville
 ##                                      Détroit        Montréal      
 ##   n                                   2569           2280         
@@ -1306,6 +1341,15 @@ print(table1_city)
 ##      $34999-$74999                    1163 ( 45.3)   1160 ( 50.9) 
 ##      $75000-Plus                       587 ( 22.8)    383 ( 16.8) 
 ##      Missing                           256 ( 10.0)    262 ( 11.5) 
+##   ville (%)                                                       
+##      Boston                              0 (  0.0)      0 (  0.0) 
+##      Chicago                             0 (  0.0)      0 (  0.0) 
+##      Détroit                          2569 (100.0)      0 (  0.0) 
+##      Montréal                            0 (  0.0)   2280 (100.0) 
+##      New-York                            0 (  0.0)      0 (  0.0) 
+##      Philadelphie                        0 (  0.0)      0 (  0.0) 
+##      Toronto                             0 (  0.0)      0 (  0.0) 
+##      Vancouver                           0 (  0.0)      0 (  0.0) 
 ##                                     Stratified by ville
 ##                                      New-York       Philadelphie  
 ##   n                                   3259           1278         
@@ -1347,6 +1391,15 @@ print(table1_city)
 ##      $34999-$74999                    1329 ( 40.8)    589 ( 46.1) 
 ##      $75000-Plus                      1101 ( 33.8)    284 ( 22.2) 
 ##      Missing                           300 (  9.2)     89 (  7.0) 
+##   ville (%)                                                       
+##      Boston                              0 (  0.0)      0 (  0.0) 
+##      Chicago                             0 (  0.0)      0 (  0.0) 
+##      Détroit                             0 (  0.0)      0 (  0.0) 
+##      Montréal                            0 (  0.0)      0 (  0.0) 
+##      New-York                         3259 (100.0)      0 (  0.0) 
+##      Philadelphie                        0 (  0.0)   1278 (100.0) 
+##      Toronto                             0 (  0.0)      0 (  0.0) 
+##      Vancouver                           0 (  0.0)      0 (  0.0) 
 ##                                     Stratified by ville
 ##                                      Toronto        Vancouver      p      test
 ##   n                                   3640           2172                     
@@ -1387,7 +1440,16 @@ print(table1_city)
 ##      $0-$34999                         516 ( 14.2)    313 ( 14.4)             
 ##      $34999-$74999                    1621 ( 44.5)   1020 ( 47.0)             
 ##      $75000-Plus                      1054 ( 29.0)    531 ( 24.4)             
-##      Missing                           449 ( 12.3)    308 ( 14.2)
+##      Missing                           449 ( 12.3)    308 ( 14.2)             
+##   ville (%)                                                        <0.001     
+##      Boston                              0 (  0.0)      0 (  0.0)             
+##      Chicago                             0 (  0.0)      0 (  0.0)             
+##      Détroit                             0 (  0.0)      0 (  0.0)             
+##      Montréal                            0 (  0.0)      0 (  0.0)             
+##      New-York                            0 (  0.0)      0 (  0.0)             
+##      Philadelphie                        0 (  0.0)      0 (  0.0)             
+##      Toronto                          3640 (100.0)      0 (  0.0)             
+##      Vancouver                           0 (  0.0)   2172 (100.0)
 ```
 
 #Tables for Each City and Combined
@@ -1410,16 +1472,16 @@ supplement_city
 
 ```
 ## # A tibble: 8 x 9
-##   ville m_bmi sd_bmi m_walkscore sd_walkscore m_groceryscore sd_groceryscore
-##   <fct> <dbl>  <dbl>       <dbl>        <dbl>          <dbl>           <dbl>
-## 1 Bost…  25.0   4.60        86.3         17.2           89.0            21.4
-## 2 Chic…  25.9   4.86        80.7         17.6           78.4            28.4
-## 3 Détr…  26.8   5.14        35.6         24.5           38.3            34.4
-## 4 Mont…  25.9   4.69        82.1         15.8           89.5            17.0
-## 5 New-…  25.0   4.49        96.1         10.5           98.1            10.6
-## 6 Phil…  26.0   4.97        86.5         17.9           90.5            22.3
-## 7 Toro…  25.6   4.45        79.7         18.9           83.1            23.6
-## 8 Vanc…  24.9   4.29        78.9         19.6           84.4            22.4
+##   ville     m_bmi sd_bmi m_walkscore sd_walkscore m_groceryscore sd_groceryscore
+##   <chr>     <dbl>  <dbl>       <dbl>        <dbl>          <dbl>           <dbl>
+## 1 Boston     25.0   4.60        86.3         17.2           89.0            21.4
+## 2 Chicago    25.9   4.86        80.7         17.6           78.4            28.4
+## 3 Détroit    26.8   5.14        35.6         24.5           38.3            34.4
+## 4 Montréal   25.9   4.69        82.1         15.8           89.5            17.0
+## 5 New-York   25.0   4.49        96.1         10.5           98.1            10.6
+## 6 Philadel…  26.0   4.97        86.5         17.9           90.5            22.3
+## 7 Toronto    25.6   4.45        79.7         18.9           83.1            23.6
+## 8 Vancouver  24.9   4.29        78.9         19.6           84.4            22.4
 ## # … with 2 more variables: m_ddrinkscore <dbl>, sd_ddrinkscore <dbl>
 ```
 
@@ -1446,6 +1508,10 @@ plot(hist_bmi_city)
 
 ![](Thesis_Analysis_files/figure-html/unnamed-chunk-31-2.png)<!-- -->
 
+```r
+ggsave("hist_bmi_city.pdf", plot = hist_bmi_city, dpi = 150, height = 4, width = 6)
+```
+
 # Histogram of WalkScore
 
 ```r
@@ -1468,6 +1534,10 @@ plot(hist_walkscore_city)
 ```
 
 ![](Thesis_Analysis_files/figure-html/unnamed-chunk-32-2.png)<!-- -->
+
+```r
+ggsave("hist_walkscore_city.pdf", plot = hist_walkscore_city, dpi = 150, height = 4, width = 6)
+```
 
 # Histogram of TransitScore
 
@@ -1515,6 +1585,10 @@ plot(hist_groceryscore_city)
 
 ![](Thesis_Analysis_files/figure-html/unnamed-chunk-34-2.png)<!-- -->
 
+```r
+ggsave("hist_groceryscore_city.pdf", plot = hist_groceryscore_city, dpi = 150, height = 4, width = 6)
+```
+
 # Histogram of DiningAndDrinkingScore
 
 ```r
@@ -1538,333 +1612,117 @@ plot(hist_diningdrinkingscore_city)
 
 ![](Thesis_Analysis_files/figure-html/unnamed-chunk-35-2.png)<!-- -->
 
+```r
+ggsave("hist_diningdrinkingscore_city.pdf", plot = hist_diningdrinkingscore_city, dpi = 150, height = 4, width = 6)
+```
+
 # Linear Regression
 
 ```r
 explanatory <- c('language', 'ville', 'gender', 'health', 'pa_guidelines', 'q42', 'marital_status', 'country_born', 'motor_vehicle_access', 'occupation_status', 'bmi_category', 'WalkScore', 'DiningandDrinkingScore', 'GroceryScore', 'day_per_week_motor_vehicle', 'day_per_week_public_transit', 'day_per_week_walking', 'day_per_week_bike', 'children_household', 'household_income_3')
 dependent <- "bmi"
-ibiccs %>%
+final_fit_Table <- ibiccs %>%
   finalfit.lm(dependent, explanatory, na.rm = TRUE)
 ```
 
 ```
-## Dependent is not a factor and will be treated as a continuous variable
-```
-
-```
-##                 Dependent: bmi                                  Mean (sd)
-## 28                    language                         English 25.6 (4.7)
-## 29                                                   Fren/Span 26.0 (4.8)
-## 40                       ville                          Boston 25.1 (4.6)
-## 41                                                     Chicago 25.9 (4.9)
-## 42                                                     Détroit 26.7 (5.1)
-## 43                                                    Montréal 25.9 (4.7)
-## 44                                                    New-York 25.0 (4.5)
-## 45                                                Philadelphie 26.0 (5.0)
-## 46                                                     Toronto 25.6 (4.5)
-## 47                                                   Vancouver 24.9 (4.3)
-## 17                      gender                          Female 25.0 (4.9)
-## 18                                                        Male 26.4 (4.3)
-## 20                      health                       Excellent 24.0 (3.7)
-## 21                                                        Good 26.8 (5.0)
-## 22                                                   Poor/Fair 28.4 (5.6)
-## 23                                                   Very Good 25.1 (4.2)
-## 37               pa_guidelines                              no 26.2 (5.1)
-## 38                                                         yes 25.4 (4.5)
-## 39                         q42                         [18,94] 25.6 (4.7)
-## 30              marital_status Relationship/Married/Common-Law 25.8 (4.6)
-## 31                                                      Single 25.2 (4.8)
-## 9                 country_born                          Canada 25.7 (4.6)
-## 10                                                       Other 24.8 (4.3)
-## 11                                               United States 25.9 (4.9)
-## 32        motor_vehicle_access                              No 25.2 (4.8)
-## 33                                                         Yes 25.8 (4.7)
-## 34           occupation_status                        Employed 25.6 (4.6)
-## 35                                                     Student 24.2 (4.8)
-## 36                                                  Unemployed 26.4 (4.9)
-## 1                 bmi_category                   normal weight 22.2 (1.7)
-## 2                                                        obese 33.6 (2.8)
-## 3                                                   overweight 27.1 (1.4)
-## 4                                                  underweight 18.1 (0.3)
-## 48                   WalkScore                         [0,100] 25.6 (4.7)
-## 16      DiningandDrinkingScore                         [0,100] 25.6 (4.7)
-## 19                GroceryScore                         [0,100] 25.6 (4.7)
-## 13  day_per_week_motor_vehicle                           [0,7] 25.6 (4.7)
-## 14 day_per_week_public_transit                           [0,7] 25.6 (4.7)
-## 15        day_per_week_walking                           [0,7] 25.6 (4.7)
-## 12           day_per_week_bike                           [0,7] 25.6 (4.6)
-## 5           children_household                               1 25.9 (4.8)
-## 6                                                            2 26.1 (4.7)
-## 7                                                            3 26.9 (5.2)
-## 8                                                         none 25.5 (4.7)
-## 24          household_income_3                       $0-$34999 26.1 (5.2)
-## 25                                               $34999-$74999 25.7 (4.7)
-## 26                                                 $75000-Plus 25.5 (4.3)
-## 27                                                     Missing 24.9 (4.6)
-##          Coefficient (univariable)     Coefficient (multivariable)
-## 28                               -                               -
-## 29    0.43 (0.18 to 0.69, p=0.001)  -0.13 (-0.33 to 0.06, p=0.173)
-## 40                               -                               -
-## 41    0.83 (0.57 to 1.10, p<0.001)   0.08 (-0.05 to 0.22, p=0.208)
-## 42    1.69 (1.41 to 1.97, p<0.001)   0.02 (-0.15 to 0.19, p=0.825)
-## 43    0.82 (0.53 to 1.11, p<0.001)   0.01 (-0.23 to 0.24, p=0.955)
-## 44  -0.01 (-0.28 to 0.26, p=0.937)  -0.08 (-0.21 to 0.06, p=0.283)
-## 45    0.96 (0.63 to 1.29, p<0.001)  -0.05 (-0.21 to 0.12, p=0.580)
-## 46    0.54 (0.28 to 0.81, p<0.001)   0.01 (-0.18 to 0.20, p=0.940)
-## 47  -0.18 (-0.47 to 0.11, p=0.213) -0.22 (-0.42 to -0.03, p=0.026)
-## 17                               -                               -
-## 18    1.39 (1.26 to 1.52, p<0.001)    0.26 (0.19 to 0.33, p<0.001)
-## 20                               -                               -
-## 21    2.78 (2.60 to 2.95, p<0.001)    0.38 (0.28 to 0.47, p<0.001)
-## 22    4.38 (4.15 to 4.62, p<0.001)    0.59 (0.45 to 0.74, p<0.001)
-## 23    1.08 (0.91 to 1.24, p<0.001)    0.14 (0.06 to 0.23, p=0.001)
-## 37                               -                               -
-## 38 -0.81 (-0.94 to -0.67, p<0.001)  -0.03 (-0.11 to 0.04, p=0.362)
-## 39    0.06 (0.05 to 0.06, p<0.001)    0.01 (0.01 to 0.02, p<0.001)
-## 30                               -                               -
-## 31 -0.57 (-0.71 to -0.44, p<0.001)   0.00 (-0.08 to 0.08, p=0.961)
-## 9                                -                               -
-## 10 -0.91 (-1.11 to -0.71, p<0.001) -0.18 (-0.29 to -0.06, p=0.004)
-## 11    0.18 (0.04 to 0.33, p=0.012)   0.01 (-0.15 to 0.17, p=0.923)
-## 32                               -                               -
-## 33    0.63 (0.48 to 0.77, p<0.001)  -0.01 (-0.10 to 0.09, p=0.871)
-## 34                               -                               -
-## 35 -1.32 (-1.57 to -1.06, p<0.001)   0.02 (-0.12 to 0.15, p=0.813)
-## 36    0.90 (0.74 to 1.06, p<0.001)  -0.08 (-0.18 to 0.02, p=0.126)
-## 1                                -                               -
-## 2  11.44 (11.37 to 11.51, p<0.001) 11.12 (11.02 to 11.21, p<0.001)
-## 3     4.89 (4.83 to 4.95, p<0.001)    4.67 (4.60 to 4.75, p<0.001)
-## 4  -4.11 (-4.30 to -3.92, p<0.001) -3.97 (-4.21 to -3.72, p<0.001)
-## 48 -0.02 (-0.02 to -0.02, p<0.001)   0.00 (-0.01 to 0.01, p=0.538)
-## 16 -0.02 (-0.02 to -0.02, p<0.001)  -0.01 (-0.01 to 0.00, p=0.054)
-## 19 -0.01 (-0.01 to -0.01, p<0.001)   0.00 (-0.00 to 0.00, p=0.184)
-## 13    0.21 (0.19 to 0.24, p<0.001)   0.01 (-0.00 to 0.03, p=0.101)
-## 14 -0.18 (-0.21 to -0.15, p<0.001)   0.01 (-0.01 to 0.02, p=0.457)
-## 15 -0.25 (-0.27 to -0.22, p<0.001)  -0.02 (-0.03 to 0.00, p=0.056)
-## 12 -0.15 (-0.19 to -0.10, p<0.001)  -0.01 (-0.03 to 0.01, p=0.306)
-## 5                                -                               -
-## 6    0.16 (-0.13 to 0.45, p=0.286)   0.06 (-0.08 to 0.21, p=0.400)
-## 7     0.99 (0.55 to 1.42, p<0.001)    0.25 (0.03 to 0.46, p=0.023)
-## 8  -0.38 (-0.58 to -0.19, p<0.001)  -0.08 (-0.18 to 0.02, p=0.132)
-## 24                               -                               -
-## 25 -0.39 (-0.57 to -0.22, p<0.001)  -0.00 (-0.10 to 0.10, p=0.968)
-## 26 -0.60 (-0.79 to -0.40, p<0.001)  -0.08 (-0.19 to 0.03, p=0.163)
-## 27 -1.24 (-1.49 to -1.00, p<0.001) -0.22 (-0.36 to -0.09, p=0.002)
+## Note: dependent includes missing data. These are dropped.
 ```
 
 ```r
+write_csv(final_fit_Table, "final_fit_Table.csv")
+
 # Regressions for variables that won't run in explanatory
 educ_reg <- lm(bmi ~ factor(education), data = ibiccs_cc)
-summary(educ_reg)
+educ_reg_tidy <- tidy(educ_reg, conf.int = TRUE)
+educ_reg_tidy
 ```
 
 ```
-## 
-## Call:
-## lm(formula = bmi ~ factor(education), data = ibiccs_cc)
-## 
-## Residuals:
-##    Min     1Q Median     3Q    Max 
-## -9.315 -3.448 -0.788  2.552 15.406 
-## 
-## Coefficients:
-##                                      Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)                           25.2381     0.0534  472.21   <2e-16 ***
-## factor(education)Cégep                 1.1478     0.1043   11.01   <2e-16 ***
-## factor(education)Certificate/Diploma   1.3767     0.1146   12.01   <2e-16 ***
-## factor(education)Graduate School      -0.1544     0.0807   -1.91    0.056 .  
-## factor(education)High School/Lower     1.6466     0.1175   14.01   <2e-16 ***
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 4.66 on 20336 degrees of freedom
-##   (118 observations deleted due to missingness)
-## Multiple R-squared:  0.0214,	Adjusted R-squared:  0.0212 
-## F-statistic:  111 on 4 and 20336 DF,  p-value: <2e-16
+## # A tibble: 5 x 7
+##   term                  estimate std.error statistic  p.value conf.low conf.high
+##   <chr>                    <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
+## 1 (Intercept)             25.2      0.0534    472.   0          25.1    25.3    
+## 2 factor(education)Cég…    1.15     0.104      11.0  4.34e-28    0.943   1.35   
+## 3 factor(education)Cer…    1.38     0.115      12.0  3.90e-33    1.15    1.60   
+## 4 factor(education)Gra…   -0.154    0.0807     -1.91 5.59e- 2   -0.313   0.00387
+## 5 factor(education)Hig…    1.65     0.118      14.0  2.13e-44    1.42    1.88
 ```
 
 ```r
-confint(educ_reg)
-```
+write_csv(educ_reg_tidy, "educ_reg_tidy.csv")
 
-```
-##                                        2.5 %    97.5 %
-## (Intercept)                          25.1334 25.342898
-## factor(education)Cégep                0.9434  1.352214
-## factor(education)Certificate/Diploma  1.1521  1.601298
-## factor(education)Graduate School     -0.3126  0.003867
-## factor(education)High School/Lower    1.4163  1.876961
-```
-
-```r
 tran_reg <- lm(bmi ~ factor(common_transportation), data = ibiccs_cc)
-summary(tran_reg)
+tran_reg_tidy <- tidy(tran_reg, conf.int = TRUE)
+tran_reg_tidy
 ```
 
 ```
-## 
-## Call:
-## lm(formula = bmi ~ factor(common_transportation), data = ibiccs_cc)
-## 
-## Residuals:
-##    Min     1Q Median     3Q    Max 
-## -8.896 -3.384 -0.756  2.614 15.617 
-## 
-## Coefficients:
-##                                                    Estimate Std. Error t value
-## (Intercept)                                          24.612      0.148  166.11
-## factor(common_transportation)Car                      1.824      0.156   11.66
-## factor(common_transportation)Other                    1.411      0.406    3.48
-## factor(common_transportation)Public Transportation    0.721      0.159    4.55
-## factor(common_transportation)Walking                  0.121      0.166    0.73
-##                                                     Pr(>|t|)    
-## (Intercept)                                          < 2e-16 ***
-## factor(common_transportation)Car                     < 2e-16 ***
-## factor(common_transportation)Other                   0.00051 ***
-## factor(common_transportation)Public Transportation 0.0000054 ***
-## factor(common_transportation)Walking                 0.46527    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 4.66 on 20454 degrees of freedom
-## Multiple R-squared:  0.0229,	Adjusted R-squared:  0.0227 
-## F-statistic:  120 on 4 and 20454 DF,  p-value: <2e-16
+## # A tibble: 5 x 7
+##   term                  estimate std.error statistic  p.value conf.low conf.high
+##   <chr>                    <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
+## 1 (Intercept)             24.6       0.148   166.    0          24.3      24.9  
+## 2 factor(common_transp…    1.82      0.156    11.7   2.70e-31    1.52      2.13 
+## 3 factor(common_transp…    1.41      0.406     3.48  5.09e- 4    0.615     2.21 
+## 4 factor(common_transp…    0.721     0.159     4.55  5.42e- 6    0.411     1.03 
+## 5 factor(common_transp…    0.121     0.166     0.730 4.65e- 1   -0.204     0.446
 ```
 
 ```r
-confint(tran_reg)
-```
+write_csv(tran_reg_tidy, "tran_reg_tidy.csv")
 
-```
-##                                                      2.5 %  97.5 %
-## (Intercept)                                        24.3220 24.9029
-## factor(common_transportation)Car                    1.5170  2.1303
-## factor(common_transportation)Other                  0.6154  2.2061
-## factor(common_transportation)Public Transportation  0.4106  1.0324
-## factor(common_transportation)Walking               -0.2037  0.4456
-```
-
-```r
 income_reg <- lm(bmi ~ factor(household_income_3), data = ibiccs_cc)
-summary(income_reg)
+income_reg_tidy <- tidy(income_reg, conf.int = TRUE)
+income_reg_tidy
 ```
 
 ```
-## 
-## Call:
-## lm(formula = bmi ~ factor(household_income_3), data = ibiccs_cc)
-## 
-## Residuals:
-##    Min     1Q Median     3Q    Max 
-## -8.565 -3.477 -0.757  2.603 15.488 
-## 
-## Coefficients:
-##                                         Estimate Std. Error t value Pr(>|t|)
-## (Intercept)                              26.1251     0.0776  336.61  < 2e-16
-## factor(household_income_3)$34999-$74999  -0.4080     0.0916   -4.45  8.6e-06
-## factor(household_income_3)$75000-Plus    -0.6133     0.1006   -6.10  1.1e-09
-## factor(household_income_3)Missing        -1.2434     0.1288   -9.65  < 2e-16
-##                                            
-## (Intercept)                             ***
-## factor(household_income_3)$34999-$74999 ***
-## factor(household_income_3)$75000-Plus   ***
-## factor(household_income_3)Missing       ***
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 4.7 on 20455 degrees of freedom
-## Multiple R-squared:  0.00486,	Adjusted R-squared:  0.00471 
-## F-statistic: 33.3 on 3 and 20455 DF,  p-value: <2e-16
+## # A tibble: 4 x 7
+##   term                  estimate std.error statistic  p.value conf.low conf.high
+##   <chr>                    <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
+## 1 (Intercept)             26.1      0.0776    337.   0          26.0      26.3  
+## 2 factor(household_inc…   -0.408    0.0916     -4.45 8.56e- 6   -0.588    -0.228
+## 3 factor(household_inc…   -0.613    0.101      -6.10 1.09e- 9   -0.810    -0.416
+## 4 factor(household_inc…   -1.24     0.129      -9.65 5.26e-22   -1.50     -0.991
 ```
 
 ```r
-confint(income_reg)
-```
+write_csv(income_reg_tidy, "income_reg_tidy.csv")
 
-```
-##                                           2.5 %  97.5 %
-## (Intercept)                             25.9730 26.2773
-## factor(household_income_3)$34999-$74999 -0.5876 -0.2284
-## factor(household_income_3)$75000-Plus   -0.8104 -0.4162
-## factor(household_income_3)Missing       -1.4958 -0.9909
-```
-
-```r
 ethn_reg <- lm(bmi ~ factor(ethnicity), data = ibiccs_cc)
-summary(ethn_reg)
+ethn_reg_tidy <- tidy(ethn_reg, conf.int = TRUE)
+ethn_reg_tidy
 ```
 
 ```
-## 
-## Call:
-## lm(formula = bmi ~ factor(ethnicity), data = ibiccs_cc)
-## 
-## Residuals:
-##    Min     1Q Median     3Q    Max 
-## -10.02  -3.40  -0.75   2.55  16.26 
-## 
-## Coefficients:
-##                            Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)                  27.762      0.128  217.24  < 2e-16 ***
-## factor(ethnicity)Asian       -4.086      0.159  -25.73  < 2e-16 ***
-## factor(ethnicity)Caucasian   -1.992      0.133  -14.96  < 2e-16 ***
-## factor(ethnicity)Hispanic    -1.549      0.214   -7.24  4.7e-13 ***
-## factor(ethnicity)Other       -2.434      0.212  -11.46  < 2e-16 ***
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 4.63 on 20454 degrees of freedom
-## Multiple R-squared:  0.0348,	Adjusted R-squared:  0.0346 
-## F-statistic:  184 on 4 and 20454 DF,  p-value: <2e-16
+## # A tibble: 5 x 7
+##   term                 estimate std.error statistic   p.value conf.low conf.high
+##   <chr>                   <dbl>     <dbl>     <dbl>     <dbl>    <dbl>     <dbl>
+## 1 (Intercept)             27.8      0.128    217.   0            27.5      28.0 
+## 2 factor(ethnicity)As…    -4.09     0.159    -25.7  9.44e-144    -4.40     -3.78
+## 3 factor(ethnicity)Ca…    -1.99     0.133    -15.0  2.65e- 50    -2.25     -1.73
+## 4 factor(ethnicity)Hi…    -1.55     0.214     -7.24 4.67e- 13    -1.97     -1.13
+## 5 factor(ethnicity)Ot…    -2.43     0.212    -11.5  2.53e- 30    -2.85     -2.02
 ```
 
 ```r
-confint(ethn_reg)
-```
+write_csv(ethn_reg_tidy, "ethn_reg_tidy.csv")
 
-```
-##                             2.5 % 97.5 %
-## (Intercept)                27.511 28.012
-## factor(ethnicity)Asian     -4.398 -3.775
-## factor(ethnicity)Caucasian -2.253 -1.731
-## factor(ethnicity)Hispanic  -1.968 -1.129
-## factor(ethnicity)Other     -2.850 -2.018
-```
-
-```r
 pa_lvl_reg <- lm(bmi ~ factor(pa_guidelines), data = ibiccs_cc)
-summary(pa_lvl_reg)
+pa_lvl_reg_tidy <- tidy(pa_lvl_reg, conf.int = TRUE)
+pa_lvl_reg_tidy
 ```
 
 ```
-## 
-## Call:
-## lm(formula = bmi ~ factor(pa_guidelines), data = ibiccs_cc)
-## 
-## Residuals:
-##    Min     1Q Median     3Q    Max 
-## -8.656 -3.454 -0.824  2.674 15.106 
-## 
-## Coefficients:
-##                          Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)               26.2164     0.0580   451.8   <2e-16 ***
-## factor(pa_guidelines)yes  -0.8319     0.0704   -11.8   <2e-16 ***
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 4.7 on 20457 degrees of freedom
-## Multiple R-squared:  0.00679,	Adjusted R-squared:  0.00674 
-## F-statistic:  140 on 1 and 20457 DF,  p-value: <2e-16
+## # A tibble: 2 x 7
+##   term                  estimate std.error statistic  p.value conf.low conf.high
+##   <chr>                    <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
+## 1 (Intercept)             26.2      0.0580     452.  0          26.1      26.3  
+## 2 factor(pa_guidelines…   -0.832    0.0704     -11.8 3.81e-32   -0.970    -0.694
 ```
 
 ```r
-confint(pa_lvl_reg)
-```
-
-```
-##                            2.5 % 97.5 %
-## (Intercept)              26.1027 26.330
-## factor(pa_guidelines)yes -0.9699 -0.694
+write_csv(pa_lvl_reg_tidy, "pa_lvl_reg_tidy.csv")
 ```
 
 # Linear Regression
@@ -2091,47 +1949,149 @@ confint(lm3)
 # Scatter Plots for BMI & WalkScore
 
 ```r
-ggplot(ibiccs_cc, aes(x = bmi, y = WalkScore)) + 
-  geom_point(alpha = 0.02) + 
-  geom_smooth() +
-  facet_wrap(~ ville)
+bmi_walkscore <- ggplot(ibiccs_cc, aes(x = bmi, y = WalkScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() 
+
+plot(bmi_walkscore)
 ```
 
 ```
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+## `geom_smooth()` using formula 'y ~ x'
 ```
 
 ![](Thesis_Analysis_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
 
+```r
+ggsave("bmi_walkscore.pdf", plot = bmi_walkscore, dpi = 150, height = 4, width = 6)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+```r
+bmi_walkscore_city <- ggplot(ibiccs_cc, aes(x = bmi, y = WalkScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() +
+  facet_wrap(~ ville)
+
+plot(bmi_walkscore_city)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+![](Thesis_Analysis_files/figure-html/unnamed-chunk-38-2.png)<!-- -->
+
+```r
+ggsave("bmi_walkscore_city.pdf", plot = bmi_walkscore_city, dpi = 150, height = 4, width = 6)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
 # Scatter Plots for BMI & GroceryScore
 
 ```r
-ggplot(ibiccs_cc, aes(x = bmi, y = GroceryScore)) + 
-  geom_point(alpha = 0.02) + 
-  geom_smooth() +
-  facet_wrap(~ ville)
+bmi_groceryscore <- ggplot(ibiccs_cc, aes(x = bmi, y = GroceryScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() 
+
+plot(bmi_groceryscore)
 ```
 
 ```
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+## `geom_smooth()` using formula 'y ~ x'
 ```
 
 ![](Thesis_Analysis_files/figure-html/unnamed-chunk-39-1.png)<!-- -->
 
+```r
+ggsave("bmi_groceryscore.pdf", plot = bmi_groceryscore, dpi = 150, height = 4, width = 6)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+```r
+bmi_groceryscore_city <- ggplot(ibiccs_cc, aes(x = bmi, y = GroceryScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() +
+  facet_wrap(~ ville)
+
+plot(bmi_groceryscore_city)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+![](Thesis_Analysis_files/figure-html/unnamed-chunk-39-2.png)<!-- -->
+
+```r
+ggsave("bmi_groceryscore_city.pdf", plot = bmi_groceryscore_city, dpi = 150, height = 4, width = 6)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
 # Scatter Plots for BMI & DiningandDrinkingScore
 
 ```r
-ggplot(ibiccs_cc, aes(x = bmi, y = DiningandDrinkingScore)) + 
-  geom_point(alpha = 0.02) + 
-  geom_smooth() +
-  facet_wrap(~ ville)
+bmi_diningscore <- ggplot(ibiccs_cc, aes(x = bmi, y = DiningandDrinkingScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() 
+
+plot(bmi_diningscore)
 ```
 
 ```
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+## `geom_smooth()` using formula 'y ~ x'
 ```
 
 ![](Thesis_Analysis_files/figure-html/unnamed-chunk-40-1.png)<!-- -->
+
+```r
+ggsave("bmi_diningscore.pdf", plot = bmi_diningscore, dpi = 150, height = 4, width = 6)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+```r
+bmi_diningscore_city <- ggplot(ibiccs_cc, aes(x = bmi, y = DiningandDrinkingScore)) + 
+  geom_point(alpha = 0.03) + 
+  geom_smooth(method = "lm") +
+  theme_minimal() +
+  facet_wrap(~ ville)
+
+plot(bmi_diningscore_city)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
+
+![](Thesis_Analysis_files/figure-html/unnamed-chunk-40-2.png)<!-- -->
+
+```r
+ggsave("bmi_diningscore_city.pdf", plot = bmi_diningscore_city, dpi = 150, height = 4, width = 6)
+```
+
+```
+## `geom_smooth()` using formula 'y ~ x'
+```
 
 # Causal Mediation 
 
@@ -2159,10 +2119,10 @@ summary(gs_mediation)
 ## Quasi-Bayesian Confidence Intervals
 ## 
 ##                Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.0170       0.0120         0.02  <2e-16 ***
-## ADE             -0.0370      -0.0422        -0.03  <2e-16 ***
+## ACME             0.0170       0.0119         0.02  <2e-16 ***
+## ADE             -0.0370      -0.0426        -0.03  <2e-16 ***
 ## Total Effect    -0.0200      -0.0227        -0.02  <2e-16 ***
-## Prop. Mediated  -0.8527      -1.1448        -0.59  <2e-16 ***
+## Prop. Mediated  -0.8491      -1.1645        -0.60  <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2192,10 +2152,10 @@ summary(gs_mediation_c)
 ## Quasi-Bayesian Confidence Intervals
 ## 
 ##                 Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.01276      0.00769         0.02  <2e-16 ***
-## ADE             -0.01608     -0.02242        -0.01  <2e-16 ***
-## Total Effect    -0.00332     -0.00685         0.00   0.056 .  
-## Prop. Mediated  -3.67257    -29.14944         4.94   0.056 .  
+## ACME             0.01283      0.00781         0.02  <2e-16 ***
+## ADE             -0.01606     -0.02236        -0.01  <2e-16 ***
+## Total Effect    -0.00323     -0.00667         0.00   0.072 .  
+## Prop. Mediated  -3.74960    -27.60861        20.96   0.072 .  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2231,10 +2191,10 @@ summary(gs_mediation_inc)
 ## Quasi-Bayesian Confidence Intervals
 ## 
 ##                 Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.01281      0.00775         0.02  <2e-16 ***
-## ADE             -0.01628     -0.02252        -0.01  <2e-16 ***
-## Total Effect    -0.00347     -0.00700         0.00   0.062 .  
-## Prop. Mediated  -3.47688    -22.34000        10.23   0.062 .  
+## ACME             0.01266      0.00760         0.02  <2e-16 ***
+## ADE             -0.01607     -0.02193        -0.01  <2e-16 ***
+## Total Effect    -0.00341     -0.00671         0.00   0.054 .  
+## Prop. Mediated  -3.54436    -40.17537         3.63   0.054 .  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2258,10 +2218,10 @@ summary(gs_mediation_linc)
 ## (Inference Conditional on the Covariate Values Specified in `covariates')
 ## 
 ##                 Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.02404      0.01242         0.04  <2e-16 ***
-## ADE             -0.03016     -0.04275        -0.02  <2e-16 ***
-## Total Effect    -0.00612     -0.01317         0.00   0.082 .  
-## Prop. Mediated  -3.74123    -21.81438        13.82   0.082 .  
+## ACME             0.02332      0.01182         0.03  <2e-16 ***
+## ADE             -0.02936     -0.04229        -0.02  <2e-16 ***
+## Total Effect    -0.00603     -0.01278         0.00    0.08 .  
+## Prop. Mediated  -3.60297    -24.91936        15.87    0.08 .  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2284,11 +2244,11 @@ summary(gs_mediation_minc)
 ## 
 ## (Inference Conditional on the Covariate Values Specified in `covariates')
 ## 
-##                Estimate 95% CI Lower 95% CI Upper p-value   
-## ACME            0.01082      0.00281         0.02   0.014 * 
-## ADE            -0.01635     -0.02446        -0.01   0.002 **
-## Total Effect   -0.00554     -0.00989         0.00   0.012 * 
-## Prop. Mediated -1.96544     -8.00721        -0.36   0.026 * 
+##                Estimate 95% CI Lower 95% CI Upper p-value    
+## ACME            0.01054      0.00189         0.02   0.020 *  
+## ADE            -0.01611     -0.02445        -0.01  <2e-16 ***
+## Total Effect   -0.00557     -0.00967         0.00   0.018 *  
+## Prop. Mediated -1.87038     -9.80807        -0.14   0.038 *  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2311,11 +2271,11 @@ summary(gs_mediation_hinc)
 ## 
 ## (Inference Conditional on the Covariate Values Specified in `covariates')
 ## 
-##                 Estimate 95% CI Lower 95% CI Upper p-value   
-## ACME             0.01334      0.00297         0.02   0.006 **
-## ADE             -0.01424     -0.02560         0.00   0.006 **
-## Total Effect    -0.00090     -0.00641         0.00   0.746   
-## Prop. Mediated  -2.69631    -56.02047        58.69   0.752   
+##                  Estimate 95% CI Lower 95% CI Upper p-value   
+## ACME              0.01335      0.00306         0.02   0.008 **
+## ADE              -0.01426     -0.02629         0.00   0.014 * 
+## Total Effect     -0.00091     -0.00612         0.00   0.708   
+## Prop. Mediated   -3.18993   -107.52593        96.92   0.716   
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2337,19 +2297,19 @@ linc_v_hinc
 ## 	Test of ACME(covariates.1) - ACME(covariates.2) = 0
 ## 
 ## data:  estimates from gs_mediation_inc
-## ACME(covariates.1) - ACME(covariates.2) = 0.011, p-value = 0.2
+## ACME(covariates.1) - ACME(covariates.2) = 0.01, p-value = 0.2
 ## alternative hypothesis: true ACME(covariates.1) - ACME(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.004647  0.027119
+##  -0.00475  0.02528
 ## 
 ## 
 ## 	Test of ADE(covariates.1) - ADE(covariates.2) = 0
 ## 
 ## data:  estimates from gs_mediation_inc
-## ADE(covariates.1) - ADE(covariates.2) = -0.016, p-value = 0.06
+## ADE(covariates.1) - ADE(covariates.2) = -0.016, p-value = 0.08
 ## alternative hypothesis: true ADE(covariates.1) - ADE(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.033119  0.000884
+##  -0.032857  0.001334
 ```
 
 ```r
@@ -2367,16 +2327,16 @@ linc_v_minc
 ## ACME(covariates.1) - ACME(covariates.2) = 0.013, p-value = 0.06
 ## alternative hypothesis: true ACME(covariates.1) - ACME(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.0002848  0.0258235
+##  -0.00009158  0.02593370
 ## 
 ## 
 ## 	Test of ADE(covariates.1) - ADE(covariates.2) = 0
 ## 
 ## data:  estimates from gs_mediation_inc
-## ADE(covariates.1) - ADE(covariates.2) = -0.014, p-value = 0.09
+## ADE(covariates.1) - ADE(covariates.2) = -0.014, p-value = 0.08
 ## alternative hypothesis: true ADE(covariates.1) - ADE(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.029286  0.001881
+##  -0.029417  0.001157
 ```
 
 ```r
@@ -2391,19 +2351,19 @@ minc_v_hinc
 ## 	Test of ACME(covariates.1) - ACME(covariates.2) = 0
 ## 
 ## data:  estimates from gs_mediation_inc
-## ACME(covariates.1) - ACME(covariates.2) = -0.0029, p-value = 0.7
+## ACME(covariates.1) - ACME(covariates.2) = -0.0024, p-value = 0.7
 ## alternative hypothesis: true ACME(covariates.1) - ACME(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.015221  0.009833
+##  -0.01425  0.01018
 ## 
 ## 
 ## 	Test of ADE(covariates.1) - ADE(covariates.2) = 0
 ## 
 ## data:  estimates from gs_mediation_inc
-## ADE(covariates.1) - ADE(covariates.2) = -0.0018, p-value = 0.8
+## ADE(covariates.1) - ADE(covariates.2) = -0.002, p-value = 0.8
 ## alternative hypothesis: true ADE(covariates.1) - ADE(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.01567  0.01149
+##  -0.01587  0.01130
 ```
 
 # Dining and Drinking score
@@ -2427,11 +2387,11 @@ summary(dds_mediation)
 ## 
 ## Quasi-Bayesian Confidence Intervals
 ## 
-##                 Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME           -0.020463    -0.030130        -0.01  <2e-16 ***
-## ADE             0.000486    -0.009571         0.01    0.92    
-## Total Effect   -0.019977    -0.022438        -0.02  <2e-16 ***
-## Prop. Mediated  1.021947     0.528527         1.55  <2e-16 ***
+##                Estimate 95% CI Lower 95% CI Upper p-value    
+## ACME           -0.02020     -0.02993        -0.01  <2e-16 ***
+## ADE             0.00018     -0.01021         0.01    0.96    
+## Total Effect   -0.02002     -0.02256        -0.02  <2e-16 ***
+## Prop. Mediated  1.01324      0.49854         1.56  <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2461,10 +2421,10 @@ summary(dds_mediation_c)
 ## Quasi-Bayesian Confidence Intervals
 ## 
 ##                Estimate 95% CI Lower 95% CI Upper p-value  
-## ACME           -0.00662     -0.01690         0.00   0.206  
-## ADE             0.00335     -0.00713         0.01   0.572  
-## Total Effect   -0.00327     -0.00686         0.00   0.084 .
-## Prop. Mediated  1.90268     -8.13695        14.33   0.266  
+## ACME           -0.00635     -0.01676         0.00   0.228  
+## ADE             0.00306     -0.00748         0.01   0.592  
+## Total Effect   -0.00329     -0.00668         0.00   0.086 .
+## Prop. Mediated  1.72061     -9.39024        16.38   0.298  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2500,10 +2460,10 @@ summary(dds_mediation_inc)
 ## Quasi-Bayesian Confidence Intervals
 ## 
 ##                Estimate 95% CI Lower 95% CI Upper p-value  
-## ACME           -0.00681     -0.01684         0.00   0.184  
-## ADE             0.00322     -0.00753         0.01   0.574  
-## Total Effect   -0.00359     -0.00734         0.00   0.054 .
-## Prop. Mediated  1.73579     -2.88111        13.61   0.238  
+## ACME           -0.00668     -0.01635         0.00   0.164  
+## ADE             0.00301     -0.00734         0.01   0.578  
+## Total Effect   -0.00367     -0.00726         0.00   0.044 *
+## Prop. Mediated  1.74796     -1.87355        10.73   0.196  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2527,10 +2487,10 @@ summary(gs_mediation_linc)
 ## (Inference Conditional on the Covariate Values Specified in `covariates')
 ## 
 ##                 Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.02404      0.01242         0.04  <2e-16 ***
-## ADE             -0.03016     -0.04275        -0.02  <2e-16 ***
-## Total Effect    -0.00612     -0.01317         0.00   0.082 .  
-## Prop. Mediated  -3.74123    -21.81438        13.82   0.082 .  
+## ACME             0.02332      0.01182         0.03  <2e-16 ***
+## ADE             -0.02936     -0.04229        -0.02  <2e-16 ***
+## Total Effect    -0.00603     -0.01278         0.00    0.08 .  
+## Prop. Mediated  -3.60297    -24.91936        15.87    0.08 .  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2553,11 +2513,11 @@ summary(gs_mediation_minc)
 ## 
 ## (Inference Conditional on the Covariate Values Specified in `covariates')
 ## 
-##                Estimate 95% CI Lower 95% CI Upper p-value   
-## ACME            0.01082      0.00281         0.02   0.014 * 
-## ADE            -0.01635     -0.02446        -0.01   0.002 **
-## Total Effect   -0.00554     -0.00989         0.00   0.012 * 
-## Prop. Mediated -1.96544     -8.00721        -0.36   0.026 * 
+##                Estimate 95% CI Lower 95% CI Upper p-value    
+## ACME            0.01054      0.00189         0.02   0.020 *  
+## ADE            -0.01611     -0.02445        -0.01  <2e-16 ***
+## Total Effect   -0.00557     -0.00967         0.00   0.018 *  
+## Prop. Mediated -1.87038     -9.80807        -0.14   0.038 *  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2580,11 +2540,11 @@ summary(gs_mediation_hinc)
 ## 
 ## (Inference Conditional on the Covariate Values Specified in `covariates')
 ## 
-##                 Estimate 95% CI Lower 95% CI Upper p-value   
-## ACME             0.01334      0.00297         0.02   0.006 **
-## ADE             -0.01424     -0.02560         0.00   0.006 **
-## Total Effect    -0.00090     -0.00641         0.00   0.746   
-## Prop. Mediated  -2.69631    -56.02047        58.69   0.752   
+##                  Estimate 95% CI Lower 95% CI Upper p-value   
+## ACME              0.01335      0.00306         0.02   0.008 **
+## ADE              -0.01426     -0.02629         0.00   0.014 * 
+## Total Effect     -0.00091     -0.00612         0.00   0.708   
+## Prop. Mediated   -3.18993   -107.52593        96.92   0.716   
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -2606,19 +2566,19 @@ linc_v_hinc
 ## 	Test of ACME(covariates.1) - ACME(covariates.2) = 0
 ## 
 ## data:  estimates from dds_mediation_inc
-## ACME(covariates.1) - ACME(covariates.2) = -0.008, p-value = 0.6
+## ACME(covariates.1) - ACME(covariates.2) = -0.0083, p-value = 0.6
 ## alternative hypothesis: true ACME(covariates.1) - ACME(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.03607  0.02032
+##  -0.03944  0.02123
 ## 
 ## 
 ## 	Test of ADE(covariates.1) - ADE(covariates.2) = 0
 ## 
 ## data:  estimates from dds_mediation_inc
-## ADE(covariates.1) - ADE(covariates.2) = 0.002, p-value = 0.9
+## ADE(covariates.1) - ADE(covariates.2) = 0.0018, p-value = 0.9
 ## alternative hypothesis: true ADE(covariates.1) - ADE(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.02715  0.03135
+##  -0.02857  0.03387
 ```
 
 ```r
@@ -2636,16 +2596,16 @@ linc_v_minc
 ## ACME(covariates.1) - ACME(covariates.2) = -0.012, p-value = 0.4
 ## alternative hypothesis: true ACME(covariates.1) - ACME(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.03913  0.01375
+##  -0.04158  0.01410
 ## 
 ## 
 ## 	Test of ADE(covariates.1) - ADE(covariates.2) = 0
 ## 
 ## data:  estimates from dds_mediation_inc
-## ADE(covariates.1) - ADE(covariates.2) = 0.011, p-value = 0.5
+## ADE(covariates.1) - ADE(covariates.2) = 0.01, p-value = 0.5
 ## alternative hypothesis: true ADE(covariates.1) - ADE(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.01666  0.03806
+##  -0.01764  0.04043
 ```
 
 ```r
@@ -2660,17 +2620,17 @@ minc_v_hinc
 ## 	Test of ACME(covariates.1) - ACME(covariates.2) = 0
 ## 
 ## data:  estimates from dds_mediation_inc
-## ACME(covariates.1) - ACME(covariates.2) = 0.0042, p-value = 0.7
+## ACME(covariates.1) - ACME(covariates.2) = 0.0037, p-value = 0.8
 ## alternative hypothesis: true ACME(covariates.1) - ACME(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.02145  0.03025
+##  -0.02117  0.03008
 ## 
 ## 
 ## 	Test of ADE(covariates.1) - ADE(covariates.2) = 0
 ## 
 ## data:  estimates from dds_mediation_inc
-## ADE(covariates.1) - ADE(covariates.2) = -0.0085, p-value = 0.5
+## ADE(covariates.1) - ADE(covariates.2) = -0.0082, p-value = 0.5
 ## alternative hypothesis: true ADE(covariates.1) - ADE(covariates.2) is not equal to 0
 ## 95 percent confidence interval:
-##  -0.03545  0.01760
+##  -0.03407  0.01691
 ```
